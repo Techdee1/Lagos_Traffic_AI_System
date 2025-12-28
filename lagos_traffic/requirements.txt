@@ -1,0 +1,22 @@
+# Lagos Traffic Analysis System - Dependencies
+
+# Core Computer Vision
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Object Detection (YOLOv8)
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Configuration
+pyyaml>=6.0
+
+# Web Dashboard
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+jinja2>=3.1.0
+websockets>=12.0
+
+# Database
+# sqlite3 is built into Python

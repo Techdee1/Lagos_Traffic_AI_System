@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lagos Traffic Analysis | Real-time Vehicle Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        lagos: {
+                            green: '#008751',
+                            'green-dark': '#006b3f',
+                            gold: '#ffd700',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-border {
+            background: linear-gradient(135deg, #008751, #00a86b);
+            padding: 3px;
+            border-radius: 16px;
+        }
+        .stat-card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(0, 135, 81, 0.15);
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .video-container {
+            aspect-ratio: 16/9;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1">
+                        <div class="w-2 h-8 bg-lagos-green rounded-sm"></div>
+                        <div class="w-2 h-8 bg-white border border-slate-200 rounded-sm"></div>
+                        <div class="w-2 h-8 bg-lagos-green rounded-sm"></div>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-800">Lagos Traffic</h1>
+                        <p class="text-xs text-slate-500 -mt-0.5">Real-time Vehicle Analysis</p>
+                    </div>
+                </div>
+                
+                <!-- Status Badge -->
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 text-sm text-slate-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <span id="frame-count">Frame: 0</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full pulse-dot"></span>
+                        <span id="status-text">Live</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1920px] mx-auto">
+        <!-- Video Stream Section - Full Width -->
+        <section class="bg-slate-900">
+            <div class="video-container w-full relative">
+                <img id="video-feed" src="/stream" alt="Live Traffic Feed" class="w-full h-full object-contain bg-black">
+                <!-- Video Overlay -->
+                <div class="absolute top-4 left-4 flex items-center gap-2">
+                    <span class="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                        LIVE
+                    </span>
+                    <span class="bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                        Lagos Traffic Feed
+                    </span>
+                </div>
+                <div class="absolute bottom-4 right-4 bg-black/60 text-white text-xs px-3 py-1.5 rounded backdrop-blur-sm">
+                    <span id="total-unique-display">0</span> unique vehicles detected
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Section Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800">Vehicle Detection Statistics</h2>
+                    <p class="text-sm text-slate-500">Real-time tracking and classification</p>
+                </div>
+                <div class="flex items-center gap-2 text-sm text-slate-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Current Session</span>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+                <!-- Okada -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🏍️</span>
+                        <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Bike</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-okada">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Okada</p>
+                </div>
+
+                <!-- Danfo -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🚐</span>
+                        <span class="text-xs font-medium text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Minibus</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-danfo">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Danfo</p>
+                </div>
+
+                <!-- BRT -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🚌</span>
+                        <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">BRT</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-brt">0</p>
+                    <p class="text-sm text-slate-500 mt-1">BRT</p>
+                </div>
+
+                <!-- Keke Napep -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🛺</span>
+                        <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Tricycle</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-keke_napep">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Keke Napep</p>
+                </div>
+
+                <!-- Other Buses -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🚍</span>
+                        <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Bus</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-bus">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Other Buses</p>
+                </div>
+
+                <!-- Truck -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🚚</span>
+                        <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">Truck</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-truck">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Truck</p>
+                </div>
+
+                <!-- Private Car -->
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm stat-card-hover transition-all duration-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-2xl">🚗</span>
+                        <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Car</span>
+                    </div>
+                    <p class="text-2xl font-bold text-slate-800" id="count-private_car">0</p>
+                    <p class="text-sm text-slate-500 mt-1">Private Car</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts and Activity Section -->
+        <section class="px-4 sm:px-6 lg:px-8 pb-8">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Chart -->
+                <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-slate-800">Traffic Distribution</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-lagos-green rounded-full"></span>
+                            <span class="text-sm text-slate-500">Live Data</span>
+                        </div>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Detections -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div class="p-4 border-b border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800">Recent Detections</h3>
+                        <p class="text-sm text-slate-500">Latest vehicle classifications</p>
+                    </div>
+                    <div class="p-4 max-h-80 overflow-y-auto" id="detections-list">
+                        <div class="flex items-center justify-center py-8 text-slate-400">
+                            <svg class="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Database Stats -->
+        <section class="px-4 sm:px-6 lg:px-8 pb-8">
+            <div class="bg-gradient-to-r from-lagos-green to-emerald-600 rounded-xl p-6 text-white">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                            </svg>
+                            Session Analytics
+                        </h3>
+                        <p class="text-emerald-100 text-sm mt-1">Powered by YOLOv8 AI Detection</p>
+                    </div>
+                    <div class="flex flex-wrap gap-6">
+                        <div class="text-center">
+                            <p class="text-3xl font-bold" id="total-detections">0</p>
+                            <p class="text-emerald-100 text-sm">Total Logged</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-3xl font-bold" id="today-detections">0</p>
+                            <p class="text-emerald-100 text-sm">Today</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xl font-bold" id="most-common">--</p>
+                            <p class="text-emerald-100 text-sm">Most Common</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6">
+        <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 text-sm text-slate-500">
+                    <span>Lagos Traffic Analysis System</span>
+                    <span>•</span>
+                    <span>YOLOv8 + FastAPI</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="text-slate-500">Proudly Nigerian</span>
+                    <span class="text-lg">🇳🇬</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const vehicleIcons = {
+            'okada': '🏍️',
+            'keke_napep': '🛺',
+            'danfo': '🚐',
+            'brt': '🚌',
+            'private_car': '🚗',
+            'truck': '🚚',
+            'bus': '🚍'
+        };
+
+        const vehicleColors = {
+            'okada': 'bg-slate-100 text-slate-700',
+            'keke_napep': 'bg-amber-100 text-amber-700',
+            'danfo': 'bg-yellow-100 text-yellow-700',
+            'brt': 'bg-blue-100 text-blue-700',
+            'private_car': 'bg-slate-100 text-slate-700',
+            'truck': 'bg-purple-100 text-purple-700',
+            'bus': 'bg-emerald-100 text-emerald-700'
+        };
+
+        // Initialize Chart
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Okada', 'Danfo', 'BRT', 'Keke Napep', 'Other Buses', 'Truck', 'Private Car'],
+                datasets: [{
+                    label: 'Vehicle Count',
+                    data: [0, 0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        'rgba(100, 116, 139, 0.8)',
+                        'rgba(234, 179, 8, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(148, 163, 184, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgb(100, 116, 139)',
+                        'rgb(234, 179, 8)',
+                        'rgb(59, 130, 246)',
+                        'rgb(245, 158, 11)',
+                        'rgb(16, 185, 129)',
+                        'rgb(168, 85, 247)',
+                        'rgb(148, 163, 1844)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: { size: 11 },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: { size: 11 },
+                            color: '#64748b'
+                        }
+                    }
+                }
+            }
+        });
+
+        // WebSocket connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'detection') {
+                document.getElementById('frame-count').textContent = `Frame: ${data.frame}`;
+                document.getElementById('total-unique-display').textContent = data.total_unique || 0;
+                updateCounts(data.counts);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+            document.getElementById('status-text').textContent = 'Reconnecting...';
+            setTimeout(() => location.reload(), 5000);
+        };
+
+        // Fetch functions
+        async function fetchVehicleCounts() {
+            try {
+                const response = await fetch('/api/vehicle_counts');
+                const data = await response.json();
+                updateCounts(data.counts);
+                document.getElementById('total-unique-display').textContent = data.total_unique_vehicles || 0;
+            } catch (error) {
+                console.error('Error fetching counts:', error);
+            }
+        }
+
+        async function fetchRecentDetections() {
+            try {
+                const response = await fetch('/api/recent_detections?limit=8');
+                const data = await response.json();
+                updateDetectionsList(data.detections);
+            } catch (error) {
+                console.error('Error fetching detections:', error);
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                const dbStats = data.database || {};
+                const trackerStats = data.tracker || {};
+                
+                const totalDetections = dbStats.total_detections || 0;
+                const todayDetections = dbStats.detections_today || 0;
+                
+                document.getElementById('total-detections').textContent = totalDetections.toLocaleString();
+                document.getElementById('today-detections').textContent = todayDetections.toLocaleString();
+                
+                if (trackerStats.unique_counts) {
+                    const counts = trackerStats.unique_counts;
+                    let maxType = null;
+                    let maxCount = 0;
+                    for (const [type, count] of Object.entries(counts)) {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            maxType = type;
+                        }
+                    }
+                    if (maxType) {
+                        document.getElementById('most-common').textContent = 
+                            `${maxType.replace('_', ' ')} (${maxCount})`;
+                    }
+                } else if (dbStats.most_common_vehicle) {
+                    document.getElementById('most-common').textContent = 
+                        `${dbStats.most_common_vehicle.type} (${dbStats.most_common_vehicle.count})`;
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        function updateCounts(counts) {
+            const vehicles = ['okada', 'keke_napep', 'danfo', 'brt', 'private_car', 'truck', 'bus'];
+            vehicles.forEach(v => {
+                const count = counts[v] || 0;
+                const elem = document.getElementById(`count-${v}`);
+                if (elem) elem.textContent = count.toLocaleString();
+            });
+
+            // Update chart
+            trafficChart.data.datasets[0].data = [
+                counts.okada || 0,
+                counts.danfo || 0,
+                counts.brt || 0,
+                counts.keke_napep || 0,
+                counts.bus || 0,
+                counts.truck || 0,
+                counts.private_carvate_car || 0
+            ];
+            trafficChart.update('none');
+        }
+
+        function updateDetectionsList(detections) {
+            const list = document.getElementById('detections-list');
+            
+            if (!detections || detections.length === 0) {
+                list.innerHTML = `
+                    <div class="flex items-center justify-center py-8 text-slate-400">
+                        <span>No recent detections</span>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = detections.map(det => {
+                const time = new Date(det.timestamp).toLocaleTimeString();
+                const icon = vehicleIcons[det.vehicle_type] || '🚗';
+                const colorClass = vehicleColors[det.vehicle_type] || 'bg-slate-100 text-slate-700';
+                const confidence = (det.confidence * 100).toFixed(0);
+                
+                return `
+                    <div class="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${icon}</span>
+                            <div>
+                                <p class="font-medium text-slate-800 text-sm capitalize">${det.vehicle_type.replace('_', ' ')}</p>
+                                <p class="text-xs text-slate-400">${time}</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-medium ${colorClass} px-2 py-1 rounded-full">${confidence}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initial load
+        fetchVehicleCounts();
+        fetchRecentDetections();
+        fetchStats();
+
+        // Periodic updates
+        setInterval(fetchVehicleCounts, 5000);
+        setInterval(fetchRecentDetections, 3000);
+        setInterval(fetchStats, 10000);
+    </script>
+</body>
+</html>

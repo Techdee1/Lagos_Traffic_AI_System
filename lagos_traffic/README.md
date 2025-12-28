@@ -158,9 +158,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-Your Name - [@yourtwitter](https://twitter.com/yourtwitter)
+Your Name - [@Akeem Jr Odebiyi](https://linkedin.com/akeem-jr-odebiti)
 
-Project Link: [https://github.com/yourusername/lagos-traffic-analysis](https://github.com/yourusername/lagos-traffic-analysis)
+Project Link: [https://github.com/Techdee1/Lagos_Traffic_AI_System](https://github.com/Techdee1/Lagos_Traffic_AI_System)
 
 ---
 
